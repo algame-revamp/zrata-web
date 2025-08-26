@@ -1,103 +1,215 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [author, setAuthor] = useState('');
+  const [apiStatus, setApiStatus] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // Test API connection on load
+  useEffect(() => {
+    checkApiHealth();
+    fetchMessages();
+  }, []);
+
+  const checkApiHealth = async () => {
+    try {
+      const response = await api.get('/health');
+      setApiStatus('✅ Connected to Zrata API');
+    } catch (error) {
+      setApiStatus('❌ Cannot connect to API');
+    }
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const response = await api.get('/messages');
+      if (response.success) {
+        setMessages(response.data.messages);
+      }
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  const createMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await api.post('/messages', {
+        text: newMessage,
+        author: author || 'Anonymous'
+      });
+
+      if (response.success) {
+        setNewMessage('');
+        setAuthor('');
+        fetchMessages(); // Refresh messages
+      }
+    } catch (error) {
+      console.error('Failed to create message:', error);
+    }
+  };
+
+  const deleteMessage = async (messageId: number) => {
+    try {
+      await api.delete(`/messages/${messageId}`);
+      fetchMessages(); // Refresh messages
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-8 max-w-4xl">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-blue-600 mb-2">🚀 Zrata</h1>
+        <p className="text-gray-600">Learning FastAPI + Next.js</p>
+        <p className="text-sm mt-2">{apiStatus}</p>
+      </div>
+
+      {/* API Testing Section */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <APITester />
+        <QuickTests />
+      </div>
+
+      {/* Messages Section */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-semibold mb-4">Messages</h2>
+
+        {/* Create Message Form */}
+        <form onSubmit={createMessage} className="mb-6 space-y-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Your name (optional)"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter your message..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-1 p-2 border border-gray-300 rounded"
+              required
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Send
+            </button>
+          </div>
+        </form>
+
+        {/* Messages List */}
+        <div className="space-y-3">
+          {messages.map((message: any) => (
+            <div key={message.id} className="bg-gray-50 p-3 rounded flex justify-between items-start">
+              <div>
+                <p className="font-medium">{message.author}</p>
+                <p className="text-gray-700">{message.text}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(message.timestamp * 1000).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => deleteMessage(message.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {messages.length === 0 && (
+            <p className="text-gray-500 text-center py-8">No messages yet. Send the first one!</p>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </div>
+    </div>
+  );
+}
+
+// Component for testing different API endpoints
+function APITester() {
+  const [testResults, setTestResults] = useState('');
+
+  const testEndpoint = async (endpoint: string, method: string = 'GET') => {
+    try {
+      const response = await api.get(endpoint);
+      setTestResults(JSON.stringify(response, null, 2));
+    } catch (error) {
+      setTestResults(`Error: ${error}`);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h3 className="text-lg font-semibold mb-4">API Tester</h3>
+      <div className="space-y-2 mb-4">
+        <button
+          onClick={() => testEndpoint('/')}
+          className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          GET /
+        </button>
+        <button
+          onClick={() => testEndpoint('/greet/FastAPI')}
+          className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          GET /greet/FastAPI
+        </button>
+        <button
+          onClick={() => testEndpoint('/search?q=zrata&limit=5')}
+          className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded"
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          GET /search?q=zrata&limit=5
+        </button>
+      </div>
+
+      {testResults && (
+        <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-40">
+          {testResults}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function QuickTests() {
+  const [greeting, setGreeting] = useState('');
+
+  const getGreeting = async () => {
+    try {
+      const response = await api.get('/greet/Developer');
+      setGreeting(response.message);
+    } catch (error) {
+      setGreeting('Error connecting to API');
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h3 className="text-lg font-semibold mb-4">Quick Test</h3>
+      <button
+        onClick={getGreeting}
+        className="w-full mb-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+      >
+        Test API Connection
+      </button>
+      {greeting && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded">
+          {greeting}
+        </div>
+      )}
     </div>
   );
 }
