@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-
+import { Button } from '@/components/ui/button';
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -152,6 +152,7 @@ function APITester() {
   };
 
   return (
+    
     <div className="bg-white rounded-lg shadow-md p-6">
       <h3 className="text-lg font-semibold mb-4">API Tester</h3>
       <div className="space-y-2 mb-4">
@@ -172,6 +173,12 @@ function APITester() {
           className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded"
         >
           GET /search?q=zrata&limit=5
+        </button>
+        <button
+          onClick={() => testEndpoint('/health')}
+          className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+        >
+          GET /health
         </button>
       </div>
 
@@ -210,6 +217,10 @@ function QuickTests() {
           {greeting}
         </div>
       )}
+
+      <Button variant="outline" size="sm" className="mt-4" onClick={() => setGreeting('')}>
+        Clear Greeting
+      </Button>
     </div>
   );
 }
